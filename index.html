@@ -244,6 +244,9 @@ body{touch-action:manipulation}
 .ctx .cr button.wide{flex-direction:row;font-size:16px;height:44px;margin-top:6px}
 .ctx .cc{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
 .ctx .cc button{aspect-ratio:1;border-radius:50%;border:2px solid #e5ddd2}.ctx .cc button.on{outline:3px solid #ff7a3d;outline-offset:1px}
+.rcols{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:2px 0 6px;padding:5px 6px;background:#fff6d6;border-radius:12px}
+.rcols span{font-size:13px;color:#8a6d00;margin-right:2px;flex-basis:100%}
+.rcols button{width:30px;height:30px;border-radius:50%;border:2px solid #e5ddd2;padding:0}.rcols button.on{outline:3px solid #ff7a3d;outline-offset:1px}
 .lk-rule{margin-top:16px;padding:10px 18px;border-radius:16px;background:#ffe9e4;color:#c0392b;font-size:20px;line-height:1.5;display:inline-block}
 .lk-sub{font-size:23px;color:#8a6a4a;margin-top:12px;line-height:1.5}
 .lk-stars{font-size:30px;margin-top:16px;letter-spacing:6px}
@@ -300,7 +303,7 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');cl
 
 /* ================= 저장 ================= */
 const KEY='jinseo-studio-v2';
-const APP_VER='2026.11.20-1';
+const APP_VER='2026.11.20-2';
 const CFG=/*CFG*/{}/*CFG*/;
 let db={projects:[],name:'진서',sound:true};
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.projects))db={...db,...s}}catch(e){}
@@ -1018,7 +1021,11 @@ function drawPanel(){const el=$('#pbody');if(!el)return;if(E.sel==='BODY'&&E.tab
   bindPanel(el)}
 function num(p,k,label){return `<div class="num"><span>${label}</span><div><button data-st="${k}" data-d="-1">−</button><input type="number" data-k="${k}" step="${k==='rot'?1:.5}" value="${fmt(p[k])}"><button data-st="${k}" data-d="1">+</button></div></div>`}
 function numB(k,label){return `<div class="num"><span>${label}</span><div><button data-bst="${k}" data-d="-1">−</button><input type="number" data-bk="${k}" step=".5" value="${fmt(E.pr[k])}"><button data-bst="${k}" data-d="1">+</button></div></div>`}
-function colorRow(k,cur,none){return `<div class="cols">${none?`<button data-c="${k}" data-v="none" class="none ${cur==='none'?'on':''}" title="투명"></button>`:''}${COLORS.map(c=>`<button data-c="${k}" data-v="${c}" style="background:${c}" class="${(cur||'').slice(0,7).toLowerCase()===c?'on':''}"></button>`).join('')}<input type="color" data-cc="${k}" value="${cur&&cur[0]==='#'?cur.slice(0,7):'#ffffff'}" title="다른 색"></div>`}
+function pushRecent(c){if(!c||c[0]!=='#')return;c=c.slice(0,7).toLowerCase();db.recentCols=[c,...(db.recentCols||[]).filter(x=>x!==c)].slice(0,10);saveSoon()}
+function recentCols(){const r=[...(db.recentCols||[])];if(E&&E.pr){const used=[E.pr.body,...['front','back','left','right','top','bottom'].flatMap(f=>(E.pr.faces[f]||[]).map(p=>p.c))];
+  for(const c of used){if(r.length>=10)break;if(c&&c[0]==='#'){const v=c.slice(0,7).toLowerCase();if(!r.includes(v))r.push(v)}}}return r.slice(0,10)}
+function recentRow(attr,cur){const r=recentCols();if(!r.length)return'';return `<div class="rcols"><span>⭐ 최근 쓴 색</span>${r.map(c=>`<button ${attr}="${c}" style="background:${c}" class="${(cur||'').slice(0,7).toLowerCase()===c?'on':''}" title="${c}"></button>`).join('')}</div>`}
+function colorRow(k,cur,none){return recentRow(`data-c="${k}" data-v`,cur)+`<div class="cols">${none?`<button data-c="${k}" data-v="none" class="none ${cur==='none'?'on':''}" title="투명"></button>`:''}${COLORS.map(c=>`<button data-c="${k}" data-v="${c}" style="background:${c}" class="${(cur||'').slice(0,7).toLowerCase()===c?'on':''}"></button>`).join('')}<input type="color" data-cc="${k}" value="${cur&&cur[0]==='#'?cur.slice(0,7):'#ffffff'}" title="다른 색"></div>`}
 function setNum(p,k,v){v=+v;if(isNaN(v))return;if(k==='w'||k==='h'){v=Math.max(k==='h'?.3:.5,v);if(E.lock||SQ.includes(p.type)){const ratio=p.w/p.h;if(k==='w')p.h=r2(v/ratio);else p.w=r2(v*ratio)}}if(k==='fs')v=Math.max(.8,v);if(k==='rot')v=((v%360)+360)%360;p[k]=r2(v);if(k==='w'||k==='fs')autoFit(p)}
 function bindPanel(el){
   el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{const p=selPart(),k=b.dataset.st,st=k==='rot'?15:.5;edit(()=>setNum(p,k,(+p[k]||0)+st*b.dataset.d))});
@@ -1026,8 +1033,8 @@ function bindPanel(el){
   el.querySelectorAll('[data-bst]').forEach(b=>b.onclick=()=>{const k=b.dataset.bst;edit(()=>{E.pr[k]=r2(Math.max(k==='r'?0:1,E.pr[k]+.5*b.dataset.d*(k==='r'?1:2)))})});
   el.querySelectorAll('[data-bk]').forEach(i=>i.onchange=()=>{const k=i.dataset.bk,v=+i.value;if(isNaN(v))return;edit(()=>{E.pr[k]=r2(Math.max(k==='r'?0:1,v))})});
   el.querySelectorAll('[data-sh]').forEach(b=>b.onclick=()=>{const m=Math.min(E.pr.w,E.pr.h);edit(()=>{E.pr.r=r2([0,m*.12,m/2][+b.dataset.sh])});sfx.pop()});
-  el.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const k=b.dataset.c,v=b.dataset.v;sfx.pop();if(k==='body')edit(()=>E.pr.body=v);else{const p=selPart();edit(()=>p[k]=v)}el.querySelectorAll(`[data-c="${k}"]`).forEach(x=>x.classList.toggle('on',x===b))});
-  el.querySelectorAll('[data-cc]').forEach(i=>i.oninput=()=>{const k=i.dataset.cc;if(k==='body')edit(()=>E.pr.body=i.value);else{const p=selPart();edit(()=>p[k]=i.value)}});
+  el.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const k=b.dataset.c,v=b.dataset.v;sfx.pop();pushRecent(v);if(k==='body')edit(()=>E.pr.body=v);else{const p=selPart();edit(()=>p[k]=v)}el.querySelectorAll(`[data-c="${k}"]`).forEach(x=>x.classList.toggle('on',x===b))});
+  el.querySelectorAll('[data-cc]').forEach(i=>{i.oninput=()=>{const k=i.dataset.cc;if(k==='body')edit(()=>E.pr.body=i.value);else{const p=selPart();edit(()=>p[k]=i.value)}};i.onchange=()=>pushRecent(i.value)});
   el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const p=selPart();edit(()=>p.e=b.dataset.e);sfx.pop();el.querySelectorAll('[data-e]').forEach(x=>x.classList.toggle('on',x===b))});
   const t=el.querySelector('#tIn');if(t)t.oninput=()=>{const p=selPart();edit(()=>p.t=t.value)};
   const tb=el.querySelector('#tbIn');if(tb)tb.oninput=()=>{const p=selPart();edit(()=>{p.t=tb.value;autoFit(p)})};
@@ -1071,14 +1078,14 @@ function openCtx(q,x,y){closeCtx();if(navigator.vibrate)try{navigator.vibrate(30
   const m=document.createElement('div');m.id='ctx';m.className='ctx';
   m.innerHTML=`<div class="ch"><b>${PT[q.type].n}</b><button data-cx="x" class="cxx">✕</button></div>
     <div class="cr"><button data-cx="del" class="warn">🗑️<small>지우기</small></button><button data-cx="dup">📄<small>복제</small></button><button data-cx="copy">📋<small>복사</small></button><button data-cx="lk" class="${q.lk?'on':''}">${q.lk?'🔓<small>고정 풀기</small>':'🔒<small>고정</small>'}</button>${txt?`<button data-cx="txt">✏️<small>글 고치기</small></button>`:''}</div>
-    ${col?`<div class="cl">🎨 색깔</div><div class="cc">${COLORS.map(c=>`<button data-cc="${c}" style="background:${c}" class="${(q.c||'').toLowerCase()===c?'on':''}"></button>`).join('')}</div>`:''}
+    ${col?`<div class="cl">🎨 색깔</div>${recentRow('data-cc',q.c)}<div class="cc">${COLORS.map(c=>`<button data-cc="${c}" style="background:${c}" class="${(q.c||'').toLowerCase()===c?'on':''}"></button>`).join('')}</div>`:''}
     <div class="cl">🗂️ 겹침 순서</div><div class="cr"><button data-cx="top">⏫<small>맨 앞</small></button><button data-cx="o_up">🔼<small>앞으로</small></button><button data-cx="o_down">🔽<small>뒤로</small></button><button data-cx="bottom">⏬<small>맨 뒤</small></button></div>
     <div class="cr"><button data-cx="more" class="wide">⚙️ 자세히 고치기</button></div>`;
   document.body.appendChild(bg);document.body.appendChild(m);
   const r=m.getBoundingClientRect(),vw=innerWidth,vh=innerHeight;let L,Tp;if(x+30+r.width<=vw-8){L=x+30;Tp=y-r.height/2}else if(x-30-r.width>=8){L=x-30-r.width;Tp=y-r.height/2}else{L=x-r.width/2;Tp=y+40}
   m.style.left=clamp(L,8,vw-r.width-8)+'px';m.style.top=clamp(Tp,8,Math.max(8,vh-r.height-8))+'px';
   bg.onpointerdown=e=>{e.preventDefault();closeCtx()};
-  m.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{const p=selPart();if(!p)return;edit(()=>p.c=b.dataset.cc);sfx.pop();m.querySelectorAll('[data-cc]').forEach(x=>x.classList.toggle('on',x===b));if(E.tab==='props')drawPanel()});
+  m.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{const p=selPart();if(!p)return;edit(()=>p.c=b.dataset.cc);pushRecent(b.dataset.cc);sfx.pop();m.querySelectorAll('[data-cc]').forEach(x=>x.classList.toggle('on',x===b));if(E.tab==='props')drawPanel()});
   m.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{const a=b.dataset.cx,p=selPart();if(!p&&a!=='x'){closeCtx();return}const[W,H]=faceDims(E.pr,E.face);
     if(a==='x'){closeCtx();return}
     if(a==='del'){closeCtx();del();return}if(a==='dup'){closeCtx();dup();return}
