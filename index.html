@@ -300,7 +300,7 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');cl
 
 /* ================= 저장 ================= */
 const KEY='jinseo-studio-v2';
-const APP_VER='2026.11.19-3';
+const APP_VER='2026.11.20-1';
 const CFG=/*CFG*/{}/*CFG*/;
 let db={projects:[],name:'진서',sound:true};
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.projects))db={...db,...s}}catch(e){}
@@ -1396,27 +1396,33 @@ function snap3D(){try{if(!T3)return null;const src=T3.ren.domElement,c=document.
   const g=x.createRadialGradient(c.width/2,c.height*.4,10,c.width/2,c.height/2,c.width*.7);g.addColorStop(0,'#ffffff');g.addColorStop(1,'#f3ece2');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0);return c.toDataURL('image/jpeg',.88)}catch(e){return null}}
 function pgCSS(land){const w=land?277:190,h=land?190:277;return `@page{size:A4 ${land?'landscape':'portrait'};margin:10mm}.pg{width:${w}mm;height:${h}mm;overflow:hidden;break-after:page;page-break-after:always}.pg:last-child{break-after:auto;page-break-after:auto}.pg>svg{width:${w}mm;height:${h}mm;display:block}`}
 function printHTML(pages,title,land){return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet"><style>body{margin:0;font-family:Jua,sans-serif}${pgCSS(land)}@media screen{body{background:#e9e4dc;padding:10px}.pg{background:#fff;margin:0 auto 14px;box-shadow:0 2px 10px #0003}.tip{max-width:190mm;margin:0 auto 12px;font-size:18px}}@media print{.tip{display:none}}</style></head><body><div class="tip">🖨️ 인쇄 창이 자동으로 열려요. 안 열리면 Ctrl+P (맥은 ⌘+P)를 눌러 주세요. 용지는 A4 ${land?'<b>가로</b>':'세로'}, 배율은 '실제 크기(100%)'로 해 주세요.</div>${pages.map(p=>`<div class="pg">${p}</div>`).join('')}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),600))<\/script></body></html>`}
-function printDialog(pr,kind){const shot=kind==='show'?snap3D():null;let S=null,mode='real';
+function widenPr(p){const q=clone(p),D=Math.max(p.d,15),k=D/p.d;if(k<=1)return q;q.d=D;
+  ['left','right'].forEach(f=>(q.faces[f]||[]).forEach(t=>{t.x*=k}));['top','bottom'].forEach(f=>(q.faces[f]||[]).forEach(t=>{t.y*=k}));return q}
+function printDialog(pr0,kind,wide){const pr=wide?widenPr(pr0):pr0;const shot=kind==='show'?snap3D():null;let S=null,mode='real';
   let cmax=1;
+  const thin=kind==='net'&&Math.min(pr0.w,pr0.h,pr0.d)<15;
   if(kind==='net'){S=netScales(pr);mode='real';cmax=maxScale(pr,3);
-    if(pr.netPct){S.sc.custom=Math.min(pr.netPct/100,cmax);S.want.custom=pr.netPct/100;mode='custom'}}
-  const setCustom=v=>{v=Math.round(clamp(v,30,Math.floor(cmax*100)));S.sc.custom=v/100;S.want.custom=v/100;pr.netPct=v;saveSoon();mode='custom';draw()};
+    if(thin&&S.sc.x15>S.sc.real+.01)mode='x15';
+    if(pr0.netPct){S.sc.custom=Math.min(pr0.netPct/100,cmax);S.want.custom=pr0.netPct/100;mode='custom'}}
+  const setCustom=v=>{v=Math.round(clamp(v,30,Math.floor(cmax*100)));S.sc.custom=v/100;S.want.custom=v/100;pr0.netPct=v;saveSoon();mode='custom';draw()};
   const draw=()=>{const res=kind==='show'?{pages:[showcasePage(pr,shot)],land:false}:netPages(pr,S.sc[mode]);const sc=kind==='net'?S.sc[mode]:1,cp=Math.round(sc*100),r1=v=>Math.round(v*10)/10;
     const pct=k=>Math.round(S.sc[k]*100),capped=k=>S.sc[k]<S.want[k]-.001;
-    const opts=kind==='net'?[['real',`📏 실물 크기${capped('real')?` (${pct('real')}%)`:''} · ${S.n.real}장`],...(S.n.real>1?[['fit',`📄 한 장에 모두 (${pct('fit')}%)`]]:[]),...(S.sc.x15>S.sc.real+.01?[['x15',`🔍 1.5배${capped('x15')?` (${pct('x15')}%)`:''} · ${S.n.x15}장`]]:[]),...(S.sc.x2>S.sc.x15+.01?[['x2',`🔍 2배${capped('x2')?` (${pct('x2')}%)`:''} · ${S.n.x2}장`]]:[]),...(S.sc.custom?[['custom',`🎚️ 직접 ${pct('custom')}% · ${piecePlan(pr,S.sc.custom).L.pages.length}장`]]:[])]:[];
-    const note=kind==='net'?(capped(mode)?`가장 큰 조각이 A4에 들어가도록 ${pct(mode)}%로 맞췄어요. `:'')+'조각마다 한 장 안에 들어가요. 종이를 이어 붙이지 않고, 조각을 오려서 서로 붙이면 돼요.':'';
+    const opts=kind==='net'?[['real',`📏 실물 크기${capped('real')?` (${pct('real')}%)`:''} · ${S.n.real}장`],...(S.n.real>1?[['fit',`📄 한 장에 모두 (${pct('fit')}%)`]]:[]),...(S.sc.x15>S.sc.real+.01?[['x15',`${thin?'🙌 만들기 쉽게 1.5배':'🔍 1.5배'}${capped('x15')?` (${pct('x15')}%)`:''} · ${S.n.x15}장`]]:[]),...(S.sc.x2>S.sc.x15+.01?[['x2',`🔍 2배${capped('x2')?` (${pct('x2')}%)`:''} · ${S.n.x2}장`]]:[]),...(S.sc.custom?[['custom',`🎚️ 직접 ${pct('custom')}% · ${piecePlan(pr,S.sc.custom).L.pages.length}장`]]:[])]:[];
+    const note=kind==='net'?(thin&&mode==='x15'?`<b>옆면이 좁은 기기</b>라서 오리고 접기 쉽게 1.5배로 시작해요. 실물 크기가 필요하면 📏 실물 크기를 눌러요. `:'')+(capped(mode)?`가장 큰 조각이 A4에 들어가도록 ${pct(mode)}%로 맞췄어요. `:'')+'조각마다 한 장 안에 들어가요. 종이를 이어 붙이지 않고, 조각을 오려서 서로 붙이면 돼요.':'';
     $('#box').className='box wide';
     $('#box').innerHTML=`<h2>${kind==='show'?'🖨️ 완성본 인쇄':'✂️ 도안 인쇄'} — ${esc(pr.name||'작품')}</h2>
       ${kind==='net'?`<div class="cats">${opts.map(([k,n])=>`<button data-pm="${k}" class="${mode===k?'on':''}">${n}</button>`).join('')}</div>
-        <div class="fine"><span class="fl">🎚️ 배율 직접 정하기</span><button data-st="-5">−5</button><button data-st="-1">−1</button><span class="pctbox"><input id="pctIn" type="number" inputmode="numeric" min="30" max="${Math.floor(cmax*100)}" value="${cp}">%</span><button data-st="1">+1</button><button data-st="5">+5</button>${pr.netPct?`<button data-st="reset" class="rs">↺ 실물 크기로</button>`:''}
-          <div class="fsz">인쇄되는 크기: 가로 <b>${r1(pr.w*sc)}</b> × 세로 <b>${r1(pr.h*sc)}</b> × 두께 <b>${r1(pr.d*sc)}</b> mm <span>(실물 ${pr.w}×${pr.h}×${pr.d} mm · 가장 크게 ${Math.floor(cmax*100)}%까지)</span></div></div>
+        ${thin?`<div class="fine"><span class="fl">📐 옆면 넓게</span><button data-wd="0" style="${wide?'':'background:#ffe1cf'}">실물 두께 (${r1(pr0.d*sc)}mm)</button><button data-wd="1" style="${wide?'background:#ffe1cf':''}">옆면 넓게 (${r1(Math.max(pr0.d,15)*sc)}mm)</button><div class="fsz">옆면 띠가 좁아 접기 힘들면 '옆면 넓게'를 눌러요. 앞·뒷면 크기는 그대로고, 두께만 도톰해져요.</div></div>`:''}
+        <div class="fine"><span class="fl">🎚️ 배율 직접 정하기</span><button data-st="-5">−5</button><button data-st="-1">−1</button><span class="pctbox"><input id="pctIn" type="number" inputmode="numeric" min="30" max="${Math.floor(cmax*100)}" value="${cp}">%</span><button data-st="1">+1</button><button data-st="5">+5</button>${pr0.netPct?`<button data-st="reset" class="rs">↺ 실물 크기로</button>`:''}
+          <div class="fsz">인쇄되는 크기: 가로 <b>${r1(pr.w*sc)}</b> × 세로 <b>${r1(pr.h*sc)}</b> × 두께 <b>${r1(pr.d*sc)}</b> mm <span>(실물 ${pr0.w}×${pr0.h}×${pr0.d} mm · 가장 크게 ${Math.floor(cmax*100)}%까지)</span></div></div>
         <div class="legend">${note}<br>지금 고른 것: A4 ${res.land?'<b>가로</b>':'세로'} <b>${res.pages.length}장</b> · ${res.mode==='tray'?'조각 2개 (앞+옆면 / 뒤)':'조각 6개 (앞 / 뒤 / 옆면 4개)'}<br>✂ 실선은 자르고, 점선은 접고, 회색 날개에 풀칠해요. 조각마다 번호와 붙이는 곳이 적혀 있어요. 두꺼운 종이에 뽑으면 튼튼해요.</div>`
         :`<div class="legend">3D 모습은 지금 화면에 보이는 각도로 들어가요. 바꾸고 싶으면 닫고 돌린 뒤 다시 눌러 주세요.</div>`}
       <div class="pvw ${res.pages.length===1?'one':''}">${res.pages.map(p=>`<div class="pp">${p}</div>`).join('')}</div>
       <div class="row"><button id="prC">닫기</button><button class="go" id="prGo">${DL?'📥 인쇄용 파일 받기':'🖨️ 인쇄하기'}</button></div>
       <div class="legend">인쇄 창에서 배율은 꼭 <b>'실제 크기(100%)'</b>${res.land?', 용지 방향은 <b>가로</b>':''}로 해 주세요.${DL?' 받은 파일을 열면 인쇄 창이 바로 떠요.':''}</div>`;
+    $('#box').querySelectorAll('[data-wd]').forEach(b=>b.onclick=()=>{sfx.pop();printDialog(pr0,kind,b.dataset.wd==='1')});
     $('#box').querySelectorAll('[data-pm]').forEach(b=>b.onclick=()=>{mode=b.dataset.pm;sfx.pop();draw()});
-    $('#box').querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{sfx.pop();if(b.dataset.st==='reset'){delete pr.netPct;delete S.sc.custom;saveSoon();mode='real';draw();return}setCustom(cp+ +b.dataset.st)});
+    $('#box').querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{sfx.pop();if(b.dataset.st==='reset'){delete pr0.netPct;delete S.sc.custom;saveSoon();mode='real';draw();return}setCustom(cp+ +b.dataset.st)});
     const pi=$('#pctIn');if(pi){pi.onchange=()=>{const v=parseFloat(pi.value);if(isFinite(v))setCustom(v);else draw()};pi.onkeydown=e=>{if(e.key==='Enter')pi.blur()}}
     $('#prC').onclick=closeOv;
     $('#prGo').onclick=()=>doPrint(res.pages,`${pr.name||'작품'} ${kind==='show'?'완성본':'도안'}`,res.land)};
