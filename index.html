@@ -182,6 +182,7 @@ h4 small{font-size:13px;color:#b0a594}
   html,body{height:auto!important;overflow:visible!important;background:#fff}
   #app,.ov,#confetti,#toast{display:none!important}
   #printArea{display:block}
+  #printArea,#printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
 /* ---- 기본: 캔버스+도구 ---- */
@@ -1402,7 +1403,7 @@ function showcasePage(pr,shot){const cnt=Object.values(pr.faces).reduce((a,f)=>a
 function snap3D(){try{if(!T3)return null;const src=T3.ren.domElement,c=document.createElement('canvas');c.width=src.width;c.height=src.height;const x=c.getContext('2d');
   const g=x.createRadialGradient(c.width/2,c.height*.4,10,c.width/2,c.height/2,c.width*.7);g.addColorStop(0,'#ffffff');g.addColorStop(1,'#f3ece2');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0);return c.toDataURL('image/jpeg',.88)}catch(e){return null}}
 function pgCSS(land){const w=land?277:190,h=land?190:277;return `@page{size:A4 ${land?'landscape':'portrait'};margin:10mm}.pg{width:${w}mm;height:${h}mm;overflow:hidden;break-after:page;page-break-after:always}.pg:last-child{break-after:auto;page-break-after:auto}.pg>svg{width:${w}mm;height:${h}mm;display:block}`}
-function printHTML(pages,title,land){return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet"><style>body{margin:0;font-family:Jua,sans-serif}${pgCSS(land)}@media screen{body{background:#e9e4dc;padding:10px}.pg{background:#fff;margin:0 auto 14px;box-shadow:0 2px 10px #0003}.tip{max-width:190mm;margin:0 auto 12px;font-size:18px}}@media print{.tip{display:none}}</style></head><body><div class="tip">🖨️ 인쇄 창이 자동으로 열려요. 안 열리면 Ctrl+P (맥은 ⌘+P)를 눌러 주세요. 용지는 A4 ${land?'<b>가로</b>':'세로'}, 배율은 '실제 크기(100%)'로 해 주세요.</div>${pages.map(p=>`<div class="pg">${p}</div>`).join('')}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),600))<\/script></body></html>`}
+function printHTML(pages,title,land){return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet"><style>body{margin:0;font-family:Jua,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}${pgCSS(land)}@media screen{body{background:#e9e4dc;padding:10px}.pg{background:#fff;margin:0 auto 14px;box-shadow:0 2px 10px #0003}.tip{max-width:190mm;margin:0 auto 12px;font-size:18px}}@media print{.tip{display:none}}</style></head><body><div class="tip">🖨️ 인쇄 창이 자동으로 열려요. 안 열리면 Ctrl+P (맥은 ⌘+P)를 눌러 주세요. 용지는 A4 ${land?'<b>가로</b>':'세로'}, 배율은 '실제 크기(100%)'로 해 주세요.</div>${pages.map(p=>`<div class="pg">${p}</div>`).join('')}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),600))<\/script></body></html>`}
 function widenPr(p){const q=clone(p),D=Math.max(p.d,15),k=D/p.d;if(k<=1)return q;q.d=D;
   ['left','right'].forEach(f=>(q.faces[f]||[]).forEach(t=>{t.x*=k}));['top','bottom'].forEach(f=>(q.faces[f]||[]).forEach(t=>{t.y*=k}));return q}
 function printDialog(pr0,kind,wide){const pr=wide?widenPr(pr0):pr0;const shot=kind==='show'?snap3D():null;let S=null,mode='real';
@@ -1435,7 +1436,8 @@ function printDialog(pr0,kind,wide){const pr=wide?widenPr(pr0):pr0;const shot=ki
     $('#prGo').onclick=()=>doPrint(res.pages,`${pr.name||'작품'} ${kind==='show'?'완성본':'도안'}`,res.land)};
   draw();$('#ov').classList.add('show');say(kind==='show'?'완성본 인쇄':'도안 인쇄')}
 function closeOv(){$('#ov').classList.remove('show');$('#box').className='box'}
-async function doPrint(pages,title,land){
+let PRN=0;function uniqIds(s,tag){return s.replace(/\bid="([^"]+)"/g,(m,a)=>`id="${a}_${tag}"`).replace(/url\(#([^)]+)\)/g,(m,a)=>`url(#${a}_${tag})`).replace(/href="#([^"]+)"/g,(m,a)=>`href="#${a}_${tag}"`)}
+async function doPrint(pages,title,land){pages=pages.map((p,i)=>uniqIds(p,'pr'+(++PRN)+'_'+i));
   if(DL){try{await DL.save({filename:`${title.replace(/[\\/:*?"<>|]/g,'')}.html`,data:printHTML(pages,title,land)});toast('받았어요! 파일을 열면 인쇄 창이 떠요');sfx.yay()}catch(e){if(!e||e.code!=='declined')toast('파일을 받지 못했어요. 진서용 파일에서 인쇄해 주세요')}return}
   let framed=false;try{framed=window.self!==window.top}catch(e){framed=true}
   if(framed){toast('여기서는 인쇄가 막혀 있어요. 진서용 파일에서 인쇄해 주세요');return}
